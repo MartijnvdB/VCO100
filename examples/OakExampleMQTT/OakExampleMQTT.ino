@@ -1,4 +1,3 @@
-
 /*
    Name:    OakExampleMQTT
    Date:    April 2016
@@ -26,7 +25,7 @@ const char* mqtt_server = "192.168.178.190";    // raspberrypi, Domoticz
 const unsigned int mqtt_port = 11883;
 const char* connection_id = "ESP8266Client";
 const char* client_name = "digistumpoak";
-const char* client_password = "xxxxxxx";
+const char* client_password = "xxxxx";
 const char* outTopic = "domoticz/in";           // MQTT topic for Domoticz
 const char* statusTopic = "outTopic";           // General (debug/status) topic
 
@@ -141,6 +140,11 @@ void loop() {
       hum = Voltcraft.getValue('A');    // Hum
       temp = floor(10 * Voltcraft.getValue('1')) / 10;   // Temp, degC, get rid of superfluous decimals
 
+      // If we have a valid (non-zero) temperature then apply the temperature correction.
+      if (temp) {
+        temp -= tempOffset;
+      }
+
       /* Publish values
          Only:
          - if more than PUBLISH_DELAY_MILLIS has passed since previous publication
@@ -158,8 +162,6 @@ void loop() {
       if (hum && temp && ( (hum != prefHum) || ( abs(temp - prefTemp) > 0.15 ) ) ) { // temp. tends to flap...
         static char outstr[4];
         int humStatus;  // humidy status
-
-        temp -= tempOffset; // correct for temp. difference.
 
         // Humidity qualifiers. Specific to Domoticz.
         // https://www.domoticz.com/wiki/Domoticz_API/JSON_URL's#Retrieve_status_of_specific_device
