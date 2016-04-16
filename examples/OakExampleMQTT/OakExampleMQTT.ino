@@ -26,7 +26,7 @@ const char* mqtt_server = "192.168.178.190";    // raspberrypi, Domoticz
 const unsigned int mqtt_port = 11883;
 const char* connection_id = "ESP8266Client";
 const char* client_name = "digistumpoak";
-const char* client_password = "yrhft%43";
+const char* client_password = "xxxxxxx";
 const char* outTopic = "domoticz/in";           // MQTT topic for Domoticz
 const char* statusTopic = "outTopic";           // General (debug/status) topic
 
