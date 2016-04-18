@@ -113,6 +113,7 @@ void loop() {
       Voltcraft.reset();  // reset internals for next round
 
       nextStatus = 20;
+      yield();
       break;
 
     /* Frame sampling. */
@@ -126,6 +127,7 @@ void loop() {
       else {
         nextStatus = 30;
       }
+      yield();
       break;
 
     /* Formatting and publishing to MQTT. */
@@ -153,6 +155,7 @@ void loop() {
         snprintf (msg, 50, "{\"name\":\"Voltcraft CO2\",\"idx\":%i,\"nvalue\":%s}", domoIdxCO2, outstr); // format output message
         publishToMQTT(msg);
         prefCotwo = cotwo;
+        yield();
       }
       if (hum && temp && ( (hum != prefHum) || ( abs(temp - prefTemp) > 0.15 ) ) ) { // temp. tends to flap...
         static char outstr[4];
@@ -180,6 +183,7 @@ void loop() {
 
         prefHum = hum;
         prefTemp = temp;
+        yield();
       }
 
       nextStatus = 0;
