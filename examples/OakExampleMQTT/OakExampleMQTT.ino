@@ -47,7 +47,6 @@ PubSubClient client(espClient);
 #define DATA_PIN 8      // data IN from CO-100
 #define BUILTIN_LED 1   // Oak's LED
 #define MINWAIT_MILLIS 20        // minimum wait time between data words
-#define PUBLISH_DELAY_MILLIS 50  // Forced delay to allow Oak to do it's WiFi stuff
 
 const float tempOffset = 1.0;     // Temp indication on the device seems to be on the high side.
 
@@ -145,7 +144,6 @@ void loop() {
 
       /* Publish values
          Only:
-         - if more than PUBLISH_DELAY_MILLIS has passed since previous publication
          - if data is valid
          - if data has changed wrt. previous values
       */
@@ -155,7 +153,6 @@ void loop() {
         snprintf (msg, 50, "{\"name\":\"Voltcraft CO2\",\"idx\":%i,\"nvalue\":%s}", domoIdxCO2, outstr); // format output message
         publishToMQTT(msg);
         prefCotwo = cotwo;
-        delay(PUBLISH_DELAY_MILLIS);  // do this to give Oak opportunity to do it's WiFi stuff.
       }
       if (hum && temp && ( (hum != prefHum) || ( abs(temp - prefTemp) > 0.15 ) ) ) { // temp. tends to flap...
         static char outstr[4];
@@ -183,7 +180,6 @@ void loop() {
 
         prefHum = hum;
         prefTemp = temp;
-        delay(PUBLISH_DELAY_MILLIS);
       }
 
       nextStatus = 0;
@@ -192,17 +188,15 @@ void loop() {
     default:  // PANIC - we should never get here!
       while (1) {
         digitalWrite(BUILTIN_LED, HIGH);
-        delay(1000);
+        delay(100);
+        yield();
         digitalWrite(BUILTIN_LED, LOW);
-        delay(500);
+        delay(50);
+        yield();
       }
-  }
+  } // switch
 
-  // Allow Oak to handle WiFi stuff in the loop()
-  // while we're notr busy reading data.
-  if (! Voltcraft.readmore() ) {
-    delay(PUBLISH_DELAY_MILLIS);
-  }
+  yield();  // Let Oak handle it's WiFi stuff
 
 } // loop
 
