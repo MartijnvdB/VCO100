@@ -25,7 +25,7 @@ const char* mqtt_server = "192.168.178.190";    // raspberrypi, Domoticz
 const unsigned int mqtt_port = 11883;
 const char* connection_id = "ESP8266Client";
 const char* client_name = "digistumpoak";
-const char* client_password = "xxxxx";
+const char* client_password = "yrhft%43";
 const char* outTopic = "domoticz/in";           // MQTT topic for Domoticz
 const char* statusTopic = "outTopic";           // General (debug/status) topic
 
@@ -96,8 +96,6 @@ void setup() {
 // loop() implements a FSM using switch/case statements.
 void loop() {
   client.loop();    // MQTT, maintain server connection
-
-//espClient.forceSleepBegin();
 
   switch (nextStatus) {
     /* Wait until CLOCK has been HIGH for long enough. */
@@ -177,7 +175,7 @@ void loop() {
         else {
           humStatus = 0;  // normal
         }
-        
+
         dtostrf(temp, sizeof(temp), 1, outstr);  // convert float to string
 
         snprintf (msg, 80, "{\"name\":\"Voltcraft Temp en Vocht\",\"idx\":%i,\"nvalue\":0,\"svalue\":\"%s;%i;%i\"}", domoIdxTempHum, outstr, (int)hum, humStatus);
@@ -229,15 +227,8 @@ void publishToMQTT(char* msg) {
    Reconnect to MQTT
 */
 void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    // Attempt to connect
-    if (client.connect(connection_id, client_name, client_password)) {
-      client.publish(statusTopic, "Oak has (re)connected");
-    } else {
-      // Wait before retrying
-      delay(5000); // msec
-    }
+  if (client.connect(connection_id, client_name, client_password)) {
+    client.publish(statusTopic, "Oak has (re)connected");
   }
 } // reconnect
 
