@@ -47,6 +47,8 @@ PubSubClient client(espClient);
 #define DATA_PIN 8      // data IN from CO-100
 #define BUILTIN_LED 1   // Oak's LED
 #define MINWAIT_MILLIS 20        // minimum wait time between data words
+//#define PUBLISH_DELAY_MILLIS 50 // Forced delay to allow Oak to do it's WiFi stuff
+
 
 const float tempOffset = 1.0;     // Temp indication on the device seems to be on the high side.
 
@@ -113,7 +115,7 @@ void loop() {
       Voltcraft.reset();  // reset internals for next round
 
       nextStatus = 20;
-      yield();
+      //yield();
       break;
 
     /* Frame sampling. */
@@ -127,7 +129,7 @@ void loop() {
       else {
         nextStatus = 30;
       }
-      yield();
+      //yield();
       break;
 
     /* Formatting and publishing to MQTT. */
@@ -200,7 +202,12 @@ void loop() {
       }
   } // switch
 
-  yield();  // Let Oak handle it's WiFi stuff
+  // Allow Oak to handle WiFi stuff in the loop()
+  // while we're notr busy reading data.
+  if (! Voltcraft.readmore() ) {
+    yield();
+    //delay(PUBLISH_DELAY_MILLIS);
+  }
 
 } // loop
 
