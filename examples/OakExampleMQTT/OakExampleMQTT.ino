@@ -4,12 +4,13 @@
    Author:  MBUR
 
    Example sketch for use with the Voltcraft CO-100 class, VCO100, in the form of
-   a Finite State Machine (FSM).
+   a Finite State Machine (FSM):
 
-   instantiate the object,
-   wait for the moment that a new data frame has arrived,
-   sample the data frame,
-   output the data wirelessly to an MQTT topic.
+   - wait for the moment that a new data frame has arrived
+   - reset internal data
+   - sample the data frame
+   - format the data for publication
+   - publish the data wirelessly to an MQTT topic.
 
 */
 
@@ -25,7 +26,7 @@ const char* mqtt_server = "192.168.178.190";    // raspberrypi, Domoticz
 const unsigned int mqtt_port = 11883;
 const char* connection_id = "ESP8266Client";
 const char* client_name = "digistumpoak";
-const char* client_password = "yrhft%43";
+const char* client_password = "xxxxx";
 const char* outTopic = "domoticz/in";           // MQTT topic for Domoticz
 const char* statusTopic = "outTopic";           // General (debug/status) topic
 
