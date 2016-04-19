@@ -46,11 +46,13 @@ PubSubClient client(espClient);
 #define CLOCK_PIN 9     // clock IN from CO-100
 #define DATA_PIN 8      // data IN from CO-100
 #define BUILTIN_LED 1   // Oak's LED
-#define MINWAIT_MILLIS 20        // minimum wait time between data words
-//#define PUBLISH_DELAY_MILLIS 50 // Forced delay to allow Oak to do it's WiFi stuff
+#define MINWAIT_MILLIS 20       // minimum wait time between data words
+#define PUBLISH_DELAY_MILLIS 50 // Forced delay to allow Oak to do it's WiFi stuff
+#define DELAY_BETWEEN_CONNECTS_MILLIS 5000  // time between MQTT reconnect attempts
 
 
 const float tempOffset = 1.0;     // Temp indication on the device seems to be on the high side.
+
 
 /*
    Domoticz configuration
@@ -61,14 +63,16 @@ const float tempOffset = 1.0;     // Temp indication on the device seems to be o
     Global variables
 */
 int prefdirty;
-volatile int val;                     // pin value read in the ISR
-volatile int dirty;                   // dirty flag for data processing
-volatile unsigned long latestTrigger; // latest time the IST executed
+volatile int val;                         // pin value read in the ISR
+volatile int dirty;                       // dirty flag for data processing
+volatile unsigned long latestTrigger;     // latest time the IST executed
+unsigned long previousReconnectAttempt = 0; // last time we tried to reconnect to MQTT
 unsigned long now;                    // timestamp
+int prevStatus = 0;                   // status variable for FSM
 int nextStatus = 0;                   // status variable for FSM
 float cotwo, temp, hum;               // measured data values
 float prefCotwo, prefHum, prefTemp;   // previously measured data values
-
+char msg[81];                         // MQTT payload message
 
 
 /*
@@ -82,14 +86,9 @@ void setup() {
   pinMode(CLOCK_PIN, INPUT);  // Clock out, Voltcraft
   pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
 
-
   client.setServer(mqtt_server, mqtt_port);
 
   attachInterrupt(digitalPinToInterrupt(CLOCK_PIN), ISR_readdata, FALLING);
-
-  // Connect here, in case we want to have some publishing capabilities outside
-  // the publishToMQTT function.
-  reconnect();
 
 }
 
@@ -99,6 +98,7 @@ void loop() {
   client.loop();    // MQTT, maintain server connection
 
   switch (nextStatus) {
+
     /* Wait until CLOCK has been HIGH for long enough. */
     case 0:
       // When CLOCK is HIGH and has been for more than MINWAIT_MILLIS we continue.
@@ -115,7 +115,6 @@ void loop() {
       Voltcraft.reset();  // reset internals for next round
 
       nextStatus = 20;
-      //yield();
       break;
 
     /* Frame sampling. */
@@ -129,13 +128,10 @@ void loop() {
       else {
         nextStatus = 30;
       }
-      //yield();
       break;
 
     /* Formatting and publishing to MQTT. */
     case 30:
-      char msg[81];
-
       // Access measured data in object.
       cotwo = Voltcraft.getValue('P');  // CO2
       hum = Voltcraft.getValue('A');    // Hum
@@ -149,17 +145,16 @@ void loop() {
       /* Publish values
          Only:
          - if data is valid
-         - if data has changed wrt. previous values
+         - if data has changed enough wrt. previous values to prevent flapping and too much data accumulation
       */
       if (cotwo && ( abs(cotwo - prefCotwo) >= 5) ) {
         static char outstr[5];
         dtostrf(cotwo, sizeof(cotwo), 0, outstr);  // convert float to string
         snprintf (msg, 50, "{\"name\":\"Voltcraft CO2\",\"idx\":%i,\"nvalue\":%s}", domoIdxCO2, outstr); // format output message
-        publishToMQTT(msg);
         prefCotwo = cotwo;
-        yield();
+        nextStatus = 40;
       }
-      if (hum && temp && ( (hum != prefHum) || ( abs(temp - prefTemp) > 0.15 ) ) ) { // temp. tends to flap...
+      else if (hum && temp && ( (hum != prefHum) || ( abs(temp - prefTemp) > 0.15 ) ) ) { // temp. tends to flap...
         static char outstr[4];
         int humStatus;  // humidy status
 
@@ -179,64 +174,64 @@ void loop() {
         }
 
         dtostrf(temp, sizeof(temp), 1, outstr);  // convert float to string
-
         snprintf (msg, 80, "{\"name\":\"Voltcraft Temp en Vocht\",\"idx\":%i,\"nvalue\":0,\"svalue\":\"%s;%i;%i\"}", domoIdxTempHum, outstr, (int)hum, humStatus);
-        publishToMQTT(msg);
 
         prefHum = hum;
         prefTemp = temp;
-        yield();
-      }
 
-      nextStatus = 0;
+        nextStatus = 40;  // go publish
+      }
+      else { // Nothing to publish
+        nextStatus = 0;   // start over
+      }
       break;
 
+    /* Publish the data */
+    case 40:
+      if ( !client.connected() ) {    // need to establish connection first, before publishing
+        prevStatus = 40;  // so we can return from the connection attempt
+        nextStatus = 100;
+      }
+      else {
+        client.publish(outTopic, msg);
+        nextStatus = 0;
+      }
+      break;
+
+    /* Reconnect to MQTT */
+    case 100:
+      if ( abs(millis() - previousReconnectAttempt) > DELAY_BETWEEN_CONNECTS_MILLIS) {  // non-blocking delay, we can still do stuff in loop()
+        if (client.connect(connection_id, client_name, client_password)) {
+          previousReconnectAttempt = millis();
+          client.publish(statusTopic, "Oak has (re)connected");
+          nextStatus = prevStatus;  // go back and attempt to publish our payload again
+        }
+        else {  // connect failed
+          nextStatus = 0;  // give up, get new data, try again later
+        }
+      }
+      break;
+      
     default:  // PANIC - we should never get here!
-      while (1) {
+      for (int i = 0; i < 5; i++) {
         digitalWrite(BUILTIN_LED, HIGH);
-        delay(100);
+        delay(200);
         yield();
         digitalWrite(BUILTIN_LED, LOW);
-        delay(50);
+        delay(100);
         yield();
       }
+      nextStatus = 0;
   } // switch
 
+
   // Allow Oak to handle WiFi stuff in the loop()
-  // while we're notr busy reading data.
+  // while we're not busy reading data.
   if (! Voltcraft.readmore() ) {
-    yield();
-    //delay(PUBLISH_DELAY_MILLIS);
+    delay(PUBLISH_DELAY_MILLIS);
   }
 
 } // loop
-
-
-
-/* publish a formatted message to MQTT
-*/
-void publishToMQTT(char* msg) {
-
-  // Reconnect, if necessary.
-  if (!client.connected()) {
-    reconnect();
-  }
-
-  client.publish(outTopic, msg);
-
-} // publishToMQTT
-
-
-
-/*
-   Reconnect to MQTT
-*/
-void reconnect() {
-  if (client.connect(connection_id, client_name, client_password)) {
-    client.publish(statusTopic, "Oak has (re)connected");
-  }
-} // reconnect
-
 
 
 /*
