@@ -138,9 +138,9 @@ void loop() {
       temp = floor(10 * Voltcraft.getValue('1')) / 10;   // Temp, degC, get rid of superfluous decimals
 
       // If we have a valid (non-zero) temperature then apply the temperature correction.
-      if (temp) {
-        temp -= tempOffset;
-      }
+ //     if (temp) {
+ //       temp -= tempOffset;
+ //     }
 
       /* Publish values
          Only:
@@ -173,7 +173,7 @@ void loop() {
           humStatus = 0;  // normal
         }
 
-        dtostrf(temp, sizeof(temp), 1, outstr);  // convert float to string
+        dtostrf( (temp-tempOffset), sizeof(temp), 1, outstr);  // convert temperature float value to string, applying offset
         snprintf (msg, 80, "{\"name\":\"Voltcraft Temp en Vocht\",\"idx\":%i,\"nvalue\":0,\"svalue\":\"%s;%i;%i\"}", domoIdxTempHum, outstr, (int)hum, humStatus);
 
         prefHum = hum;
