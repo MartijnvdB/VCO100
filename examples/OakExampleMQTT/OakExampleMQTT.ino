@@ -26,7 +26,7 @@ const char* mqtt_server = "192.168.178.190";    // raspberrypi, Domoticz
 const unsigned int mqtt_port = 11883;
 const char* connection_id = "ESP8266Client";
 const char* client_name = "digistumpoak";
-const char* client_password = "xxxxx";
+const char* client_password = "yrhft%43";
 const char* outTopic = "domoticz/in";           // MQTT topic for Domoticz
 const char* statusTopic = "outTopic";           // General (debug/status) topic
 
@@ -53,6 +53,7 @@ PubSubClient client(espClient);
 
 
 const float tempOffset = 1.0;     // Temp indication on the device seems to be on the high side.
+const int humOffset = -5.0;     // Humidity indication on the device seems to be on the low side.
 
 
 /*
@@ -138,10 +139,6 @@ void loop() {
       hum = Voltcraft.getValue('A');    // Hum
       temp = floor(10 * Voltcraft.getValue('1')) / 10;   // Temp, degC, get rid of superfluous decimals
 
-      // If we have a valid (non-zero) temperature then apply the temperature correction.
- //     if (temp) {
- //       temp -= tempOffset;
- //     }
 
       /* Publish values
          Only:
@@ -175,7 +172,7 @@ void loop() {
         }
 
         dtostrf( (temp-tempOffset), sizeof(temp), 1, outstr);  // convert temperature float value to string, applying offset
-        snprintf (msg, 80, "{\"name\":\"Voltcraft Temp en Vocht\",\"idx\":%i,\"nvalue\":0,\"svalue\":\"%s;%i;%i\"}", domoIdxTempHum, outstr, (int)hum, humStatus);
+        snprintf (msg, 80, "{\"name\":\"Voltcraft Temp en Vocht\",\"idx\":%i,\"nvalue\":0,\"svalue\":\"%s;%i;%i\"}", domoIdxTempHum, outstr, ((int)hum - humOffset), humStatus);
 
         prefHum = hum;
         prefTemp = temp;
