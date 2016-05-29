@@ -52,9 +52,9 @@ PubSubClient client(espClient);
 #define DELAY_BETWEEN_CONNECTS_MILLIS 5000  // time between MQTT reconnect attempts
 
 
-const float tempOffset = 1.0;     // Temp indication on the device seems to be on the high side.
+const float tempOffset = 1.0;   // Temp indication on the device seems to be on the high side.
 const int humOffset = -5.0;     // Humidity indication on the device seems to be on the low side.
-
+const int maxCO2 = 5000;        // only to suppress erratic high values
 
 /*
    Domoticz configuration
@@ -145,7 +145,7 @@ void loop() {
          - if data is valid
          - if data has changed enough wrt. previous values to prevent flapping and too much data accumulation
       */
-      if (cotwo && ( abs(cotwo - prefCotwo) >= 5) ) {
+      if (cotwo && cotwo < maxCO2 && ( abs(cotwo - prefCotwo) >= 5)) {
         static char outstr[5];
         dtostrf(cotwo, sizeof(cotwo), 0, outstr);  // convert float to string
         snprintf (msg, 50, "{\"name\":\"Voltcraft CO2\",\"idx\":%i,\"nvalue\":%s}", domoIdxCO2, outstr); // format output message
