@@ -40,6 +40,16 @@ float cotwo, temp, hum;
 float prefCotwo, prefHum, prefTemp;
 
 
+/*
+     Interrupt service routine, gets called on the FALLING clock.
+     Not placed in the VCO100 class for simplicity's sake.
+*/
+void IRAM_ATTR ISR_readdata() {
+  val = digitalRead(DATA_PIN);
+  dirty = !dirty; // toggle flag
+} // ISD_readdata
+
+
 /* Main sketch */
 
 VCO100 Voltcraft;
@@ -125,15 +135,3 @@ void loop() {
   } // switch
 
 } // loop
-
-
-/*
-     Interrupt service routine, gets called on the FALLING clock.
-     Not placed in the VCO100 class for simplicity's sake.
-*/
-void ISR_readdata() {
-  val = digitalRead(DATA_PIN);
-  dirty = !dirty; // toggle flag
-} // ISD_readdata
-
-
